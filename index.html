@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>바카라 체험</title>
+<style>
+    body { font-family: Arial; text-align: center; margin-top: 50px; }
+    button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+    .result { font-size: 20px; margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<h1>🃏 바카라 체험</h1>
+
+<button onclick="play('player')">Player 배팅</button>
+<button onclick="play('banker')">Banker 배팅</button>
+
+<div class="result" id="result"></div>
+
+<script>
+function drawCard() {
+    return Math.floor(Math.random() * 13) + 1;
+}
+
+function getValue(card) {
+    if (card >= 10) return 0;
+    return card;
+}
+
+function play(bet) {
+    let p1 = drawCard();
+    let p2 = drawCard();
+    let b1 = drawCard();
+    let b2 = drawCard();
+
+    let playerSum = (getValue(p1) + getValue(p2)) % 10;
+    let bankerSum = (getValue(b1) + getValue(b2)) % 10;
+
+    let resultText = `
+    Player: ${p1}, ${p2} → ${playerSum} <br>
+    Banker: ${b1}, ${b2} → ${bankerSum} <br><br>
+    `;
+
+    let winner = "";
+    if (playerSum > bankerSum) winner = "player";
+    else if (bankerSum > playerSum) winner = "banker";
+    else winner = "tie";
+
+    if (winner === bet) {
+        resultText += "🎉 승리!";
+    } else if (winner === "tie") {
+        resultText += "🤝 무승부";
+    } else {
+        resultText += "❌ 패배";
+    }
+
+    document.getElementById("result").innerHTML = resultText;
+}
+</script>
+
+</body>
+</html>
