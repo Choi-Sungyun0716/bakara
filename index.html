@@ -23,9 +23,15 @@ body {
     padding: 20px;
     overflow-y: auto;
     transition: 0.3s;
-    z-index: 999;
 }
 #rules.open { left:0; }
+
+#toggleBtn {
+    position:fixed;
+    left:10px;
+    top:10px;
+    z-index:1000;
+}
 
 /* 버튼 */
 button {
@@ -42,23 +48,22 @@ button {
     transform:translateY(-20px);
     transition:0.5s;
 }
+
 .show {
     opacity:1;
     transform:translateY(0);
 }
 
-/* 칩 */
-.chips button {
-    border-radius:50%;
-    font-weight:bold;
+.highlight {
+    border:3px solid yellow;
+    transform: scale(1.2);
 }
 
-/* 상단 버튼 */
-#toggleBtn {
-    position:fixed;
-    left:10px;
-    top:10px;
-    z-index:1000;
+/* 텍스트 강조 */
+.highlight-text {
+    color:yellow;
+    font-weight:bold;
+    margin-top:5px;
 }
 
 </style>
@@ -82,17 +87,22 @@ button {
 <h4>자연승</h4>
 <p>8,9 나오면 즉시 종료</p>
 
-<h4>3번째 카드</h4>
+<h4>3번째 카드 규칙 (핵심)</h4>
+
+<p><b>Player</b></p>
+<p>0~5 → 추가 / 6~7 → 멈춤</p>
+
+<p><b>Banker</b></p>
 <p>
-Player 0~5 → 추가<br>
-Banker는 Player 카드에 따라 결정
+3 → Player 카드가 8 제외 시 추가<br>
+4 → Player 카드 2~7일 때 추가<br>
+5 → Player 카드 4~7일 때 추가<br>
+6 → Player 카드 6~7일 때 추가
 </p>
 
 <h4>배당</h4>
-<p>
-Player 1배<br>
-Banker 0.95배
-</p>
+<p>Player 1배 / Banker 0.95배</p>
+
 </div>
 
 <h1>🃏 바카라 카지노</h1>
@@ -100,13 +110,16 @@ Banker 0.95배
 <p>💰 크레딧: <span id="money">1000</span></p>
 <p>🎯 베팅: <span id="betAmount">0</span></p>
 
-<div class="chips">
+<!-- 칩 -->
+<div>
 <button onclick="addBet(10)">10</button>
 <button onclick="addBet(50)">50</button>
 <button onclick="addBet(100)">100</button>
 <button onclick="addBet(500)">500</button>
+<button onclick="resetBet()">초기화</button>
 </div>
 
+<!-- 선택 -->
 <div>
 <button onclick="play('player')">Player</button>
 <button onclick="play('banker')">Banker</button>
@@ -121,27 +134,31 @@ Banker 0.95배
 <h2 id="result"></h2>
 
 <audio id="cardSound" src="https://www.soundjay.com/misc/sounds/card-flip-1.mp3"></audio>
-<audio id="winSound" src="https://www.soundjay.com/human/sounds/applause-8.mp3"></audio>
-<audio id="loseSound" src="https://www.soundjay.com/misc/sounds/fail-buzzer-01.mp3"></audio>
 
 <script>
-let money = 1000;
-let bet = 0;
+let money=1000;
+let bet=0;
 
 function toggleRules(){
     document.getElementById("rules").classList.toggle("open");
 }
 
-function addBet(amount){
-    if(bet + amount > money) return;
-    bet += amount;
-    document.getElementById("betAmount").innerText = bet;
+function addBet(a){
+    if(bet+a>money) return;
+    bet+=a;
+    document.getElementById("betAmount").innerText=bet;
 }
 
-function drawCard(){
-    let suit=["H","S","D","C"][Math.floor(Math.random()*4)];
-    let num=Math.floor(Math.random()*13)+1;
-    return {suit,num};
+function resetBet(){
+    bet=0;
+    document.getElementById("betAmount").innerText=0;
+}
+
+function draw(){
+    return {
+        suit:["H","S","D","C"][Math.floor(Math.random()*4)],
+        num:Math.floor(Math.random()*13)+1
+    };
 }
 
 function img(c){
@@ -154,79 +171,112 @@ function img(c){
 }
 
 function val(c){
-    return c.num>=10 ? 0 : c.num;
+    return c.num>=10?0:c.num;
 }
 
-function total(cards){
-    return cards.reduce((a,c)=>a+val(c),0)%10;
+function total(arr){
+    return arr.reduce((a,c)=>a+val(c),0)%10;
 }
 
-function play(choice){
+async function play(choice){
     if(bet===0) return alert("베팅하세요");
 
-    let player=[drawCard(),drawCard()];
-    let banker=[drawCard(),drawCard()];
+    let p=[draw(),draw()];
+    let b=[draw(),draw()];
 
-    let p=total(player);
-    let b=total(banker);
+    // 1️⃣ 처음 2장 보여주기
+    render("player",p.slice(0,2));
+    render("banker",b.slice(0,2));
 
-    if(p<8 && b<8){
-        if(p<=5) player.push(drawCard());
+    await delay(1000);
 
-        let p3 = player[2] ? val(player[2]) : null;
+    let pTotal=total(p);
+    let bTotal=total(b);
 
-        if(b<=2) banker.push(drawCard());
-        else if(b===3 && p3!==8) banker.push(drawCard());
-        else if(b===4 && p3>=2 && p3<=7) banker.push(drawCard());
-        else if(b===5 && p3>=4 && p3<=7) banker.push(drawCard());
-        else if(b===6 && (p3===6 || p3===7)) banker.push(drawCard());
-    }
+    // 2️⃣ 3번째 카드 로직
+    if(pTotal<8 && bTotal<8){
 
-    render("player",player);
-    render("banker",banker);
-
-    setTimeout(()=>{
-        p=total(player);
-        b=total(banker);
-
-        let winner = p>b ? "player" : b>p ? "banker" : "tie";
-        let result="";
-
-        if(winner===choice){
-            if(winner==="banker") money += bet*0.95;
-            else money += bet;
-            result="🎉 승리";
-            document.getElementById("winSound").play();
-        } else if(winner==="tie"){
-            result="🤝 무승부";
-        } else {
-            money -= bet;
-            result="❌ 패배";
-            document.getElementById("loseSound").play();
+        // Player
+        if(pTotal<=5){
+            let c=draw();
+            p.push(c);
+            await highlightDraw("player",c);
         }
 
-        bet=0;
-        document.getElementById("betAmount").innerText=0;
-        document.getElementById("money").innerText=money;
-        document.getElementById("result").innerText =
-            `Player ${p} vs Banker ${b} → ${result}`;
-    },1200);
+        let p3 = p[2]?val(p[2]):null;
+
+        // Banker
+        let need=false;
+        if(bTotal<=2) need=true;
+        else if(bTotal===3 && p3!==8) need=true;
+        else if(bTotal===4 && p3>=2 && p3<=7) need=true;
+        else if(bTotal===5 && p3>=4 && p3<=7) need=true;
+        else if(bTotal===6 && (p3===6||p3===7)) need=true;
+
+        if(need){
+            let c=draw();
+            b.push(c);
+            await highlightDraw("banker",c);
+        }
+    }
+
+    // 3️⃣ 결과 계산
+    pTotal=total(p);
+    bTotal=total(b);
+
+    let winner = pTotal>bTotal?"player":bTotal>pTotal?"banker":"tie";
+
+    let result="";
+    if(winner===choice){
+        money += winner==="banker"?bet*0.95:bet;
+        result="🎉 승리";
+    }else if(winner==="tie"){
+        result="🤝 무승부";
+    }else{
+        money -= bet;
+        result="❌ 패배";
+    }
+
+    resetBet();
+    document.getElementById("money").innerText=money;
+    document.getElementById("result").innerText =
+        `Player ${pTotal} vs Banker ${bTotal} → ${result}`;
 }
 
 function render(id,cards){
     let div=document.getElementById(id);
     div.innerHTML="";
-    cards.forEach((c,i)=>{
+    cards.forEach((c)=>{
         let imgEl=document.createElement("img");
         imgEl.src=img(c);
-        imgEl.className="card";
+        imgEl.className="card show";
         div.appendChild(imgEl);
-
-        setTimeout(()=>{
-            imgEl.classList.add("show");
-            document.getElementById("cardSound").play();
-        }, i*300);
     });
+}
+
+async function highlightDraw(id,card){
+    let div=document.getElementById(id);
+
+    // 텍스트 강조
+    let text=document.createElement("div");
+    text.innerText="🔥 3번째 카드!";
+    text.className="highlight-text";
+    div.appendChild(text);
+
+    await delay(500);
+
+    let imgEl=document.createElement("img");
+    imgEl.src=img(card);
+    imgEl.className="card show highlight";
+    div.appendChild(imgEl);
+
+    document.getElementById("cardSound").play();
+
+    await delay(800);
+}
+
+function delay(ms){
+    return new Promise(r=>setTimeout(r,ms));
 }
 </script>
 
