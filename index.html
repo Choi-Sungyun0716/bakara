@@ -2,60 +2,99 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>바카라 체험</title>
+<title>바카라 시뮬레이터</title>
 <style>
-    body { font-family: Arial; text-align: center; margin-top: 50px; }
-    button { padding: 10px 20px; margin: 10px; font-size: 16px; }
-    .result { font-size: 20px; margin-top: 20px; }
+body { font-family: Arial; text-align: center; background: #0b3d2e; color: white; }
+button { padding: 10px 20px; margin: 10px; }
+.card { width: 60px; margin: 5px; }
+.container { margin-top: 30px; }
 </style>
 </head>
 <body>
 
-<h1>🃏 바카라 체험</h1>
+<h1>🃏 바카라 시뮬레이터</h1>
 
-<button onclick="play('player')">Player 배팅</button>
-<button onclick="play('banker')">Banker 배팅</button>
+<p>💰 크레딧: <span id="money">1000</span></p>
 
-<div class="result" id="result"></div>
+<input type="number" id="bet" placeholder="베팅 금액" />
+<br>
+
+<button onclick="play('player')">Player</button>
+<button onclick="play('banker')">Banker</button>
+
+<div class="container">
+<h3>Player</h3>
+<div id="player-cards"></div>
+
+<h3>Banker</h3>
+<div id="banker-cards"></div>
+
+<h2 id="result"></h2>
+</div>
 
 <script>
+let money = 1000;
+
 function drawCard() {
-    return Math.floor(Math.random() * 13) + 1;
+    let suit = ["H","S","D","C"][Math.floor(Math.random()*4)];
+    let num = Math.floor(Math.random()*13)+1;
+    return {suit, num};
+}
+
+function getCardImage(card) {
+    let n = card.num;
+    if(n === 1) n = "A";
+    else if(n === 11) n = "J";
+    else if(n === 12) n = "Q";
+    else if(n === 13) n = "K";
+
+    return `https://deckofcardsapi.com/static/img/${n}${card.suit}.png`;
 }
 
 function getValue(card) {
-    if (card >= 10) return 0;
-    return card;
+    if(card.num >= 10) return 0;
+    return card.num;
 }
 
-function play(bet) {
-    let p1 = drawCard();
-    let p2 = drawCard();
-    let b1 = drawCard();
-    let b2 = drawCard();
-
-    let playerSum = (getValue(p1) + getValue(p2)) % 10;
-    let bankerSum = (getValue(b1) + getValue(b2)) % 10;
-
-    let resultText = `
-    Player: ${p1}, ${p2} → ${playerSum} <br>
-    Banker: ${b1}, ${b2} → ${bankerSum} <br><br>
-    `;
-
-    let winner = "";
-    if (playerSum > bankerSum) winner = "player";
-    else if (bankerSum > playerSum) winner = "banker";
-    else winner = "tie";
-
-    if (winner === bet) {
-        resultText += "🎉 승리!";
-    } else if (winner === "tie") {
-        resultText += "🤝 무승부";
-    } else {
-        resultText += "❌ 패배";
+function play(betChoice) {
+    let bet = parseInt(document.getElementById("bet").value);
+    if(!bet || bet > money) {
+        alert("베팅 금액 오류");
+        return;
     }
 
-    document.getElementById("result").innerHTML = resultText;
+    let p1 = drawCard(), p2 = drawCard();
+    let b1 = drawCard(), b2 = drawCard();
+
+    let playerSum = (getValue(p1)+getValue(p2))%10;
+    let bankerSum = (getValue(b1)+getValue(b2))%10;
+
+    let playerDiv = document.getElementById("player-cards");
+    let bankerDiv = document.getElementById("banker-cards");
+
+    playerDiv.innerHTML = `<img class="card" src="${getCardImage(p1)}"><img class="card" src="${getCardImage(p2)}">`;
+    bankerDiv.innerHTML = `<img class="card" src="${getCardImage(b1)}"><img class="card" src="${getCardImage(b2)}">`;
+
+    let result = "";
+    let winner = "";
+
+    if(playerSum > bankerSum) winner = "player";
+    else if(bankerSum > playerSum) winner = "banker";
+    else winner = "tie";
+
+    if(winner === betChoice) {
+        money += bet;
+        result = "🎉 승리";
+    } else if(winner === "tie") {
+        result = "🤝 무승부";
+    } else {
+        money -= bet;
+        result = "❌ 패배";
+    }
+
+    document.getElementById("money").innerText = money;
+    document.getElementById("result").innerText =
+        `Player: ${playerSum} / Banker: ${bankerSum} → ${result}`;
 }
 </script>
 
