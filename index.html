@@ -162,12 +162,24 @@ function draw(){
 }
 
 function img(c){
-    let n=c.num;
-    if(n===1)n="A";
-    else if(n===11)n="J";
-    else if(n===12)n="Q";
-    else if(n===13)n="K";
-    return `cards/${n}${c.suit}.png`;
+    const suitMap = {
+        H: "hearts",
+        S: "spades",
+        D: "diamonds",
+        C: "clubs"
+    };
+
+    let valueMap = {
+        1: "ace",
+        11: "jack",
+        12: "queen",
+        13: "king"
+    };
+
+    let value = valueMap[c.num] || c.num;
+    let suit = suitMap[c.suit];
+
+    return `cards/${value}_of_${suit}.png`;
 }
 
 function val(c){
